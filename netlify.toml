@@ -1,6 +1,19 @@
+# netlify.toml
+
 [build]
-  publish = "build/web"
   command = "bash netlify-build.sh"
+  publish = "build/web"
+  # The base directory is optional if your script is in the repo root
+  # base = "."
 
 [build.environment]
+  # Use Netlify's pre-installed Flutter
+  FLUTTER_ROOT = "/opt/buildhome/flutter"
+  # Optional: force Flutter to use stable channel
   FLUTTER_CHANNEL = "stable"
+
+# Optional: redirect all URLs to index.html for Flutter web routing
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
