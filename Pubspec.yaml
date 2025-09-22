@@ -1,5 +1,5 @@
 name: rivalis
-description: Rivalis app with Firebase
+description: Rivalis app with Firebase, live multiplayer, leaderboard, and playing cards
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -10,8 +10,10 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # Firebase core only
+  # Firebase
   firebase_core: ^2.25.0
+  firebase_auth: ^5.25.0
+  cloud_firestore: ^5.3.0
 
 dev_dependencies:
   flutter_test:
