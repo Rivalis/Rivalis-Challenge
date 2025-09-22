@@ -1,8 +1,25 @@
-[build]
-  publish = "build/web"
-  command = "flutter build web"
+# netlify.toml
 
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+[build]
+  # Commands to run before publishing
+  command = """
+    # Install Flutter
+    git clone https://github.com/flutter/flutter.git --branch stable --depth 1
+    export PATH="$PWD/flutter/bin:$PATH"
+    
+    # Check Flutter setup
+    flutter doctor -v
+    
+    # Get project dependencies
+    flutter pub get
+    
+    # Build the web app
+    flutter build web
+  """
+  
+  # Directory to publish to Netlify
+  publish = "build/web"
+
+# Optional environment variables
+[build.environment]
+  NODE_VERSION = "22.19.0"
