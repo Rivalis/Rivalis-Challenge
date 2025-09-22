@@ -9,20 +9,28 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    # 1️⃣ Checkout the repo
     - uses: actions/checkout@v3
 
+    # 2️⃣ Install Flutter
     - name: Install Flutter
       uses: subosito/flutter-action@v2
       with:
         flutter-version: '3.13.0'
 
-    - name: Get Dependencies
+    # 3️⃣ Get Dependencies
+    - name: Get Flutter Packages
       run: flutter pub get
+      # If pubspec.yaml is not in the root, uncomment below and update the path
+      # working-directory: path/to/flutter/project
 
+    # 4️⃣ Build Flutter Web
     - name: Build Web
       run: flutter build web --release
+      # working-directory: path/to/flutter/project  # only if pubspec.yaml is not at root
 
-    - name: Upload build artifacts
+    # 5️⃣ Upload build artifacts
+    - name: Upload Web Build
       uses: actions/upload-artifact@v4
       with:
         name: web-build
