@@ -1,0 +1,10 @@
+build]
+  command = "bash ./build.sh"
+  publish = "build/web"
+
+[build.environment]
+  NODE_VERSION = "18"
+
+[[plugins]]
+  package = "netlify-plugin-flutter"
+  
