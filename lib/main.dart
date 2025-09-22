@@ -88,8 +88,23 @@ class CardData {
   final String suit;
   final String exercise;
   final String description;
-  final int rank; // 1-13
+  final int rank;
+
   CardData({required this.suit, required this.exercise, required this.description, required this.rank});
+
+  Map<String, dynamic> toMap() => {
+        'suit': suit,
+        'exercise': exercise,
+        'description': description,
+        'rank': rank,
+      };
+
+  factory CardData.fromMap(Map<String, dynamic> map) => CardData(
+        suit: map['suit'],
+        exercise: map['exercise'],
+        description: map['description'],
+        rank: map['rank'],
+      );
 }
 
 enum Mode { Solo, Burnout, Multiplayer }
@@ -197,7 +212,7 @@ class LeaderboardScreen extends StatelessWidget {
 class GameScreen extends StatefulWidget {
   final Mode mode;
   final String? selectedSuit;
-  final String? sessionId; // Multiplayer
+  final String? sessionId;
   GameScreen({required this.mode, this.selectedSuit, this.sessionId});
   @override
   _GameScreenState createState() => _GameScreenState();
@@ -213,6 +228,8 @@ class _GameScreenState extends State<GameScreen> {
   bool showCompleteButton = true;
   String? selectedSuit;
 
+  final CollectionReference sessionsRef = FirebaseFirestore.instance.collection('multiplayer_sessions');
+
   final List<String> rankNames = ["Ace","2","3","4","5","6","7","8","9","10","Jack","Queen","King"];
   final Map<String, String> suitSymbols = {"Hearts":"♥","Diamonds":"♦","Clubs":"♣","Spades":"♠"};
 
@@ -222,23 +239,169 @@ class _GameScreenState extends State<GameScreen> {
     selectedSuit = widget.selectedSuit;
     deck = generateDeck(widget.mode);
     deck.shuffle();
+    if (widget.mode == Mode.Multiplayer) _initMultiplayer();
     startCard();
   }
 
   List<CardData> generateDeck(Mode mode) {
     Map<String, List<String>> muscleExercises = {
-      "Hearts": ["Push-ups ×15", "Shoulder Taps ×20", "Arm Circles ×20", "Wall Push-ups ×15"],
-      "Diamonds": ["Squats ×20", "Lunges ×15 per leg", "High Knees ×25", "Glute Bridges ×15"],
-      "Clubs": ["Plank 30s", "Sit-ups ×15", "Mountain Climbers ×20", "Leg Raises ×15"],
-      "Spades": ["Burpees ×10", "Jumping Jacks ×25", "Burpee + Jump ×10", "High Knees ×30"],
+      "Hearts":["Push-ups ×15","Shoulder Taps ×20","Arm Circles ×20","Wall Push-ups ×15"],
+      "Diamonds":["Squats ×20","Lunges ×15 per leg","High Knees ×25","Glute Bridges ×15"],
+      "Clubs":["Plank 30s","Sit-ups ×15","Mountain Climbers ×20","Leg Raises ×15"],
+      "Spades":["Burpees ×10","Jumping Jacks ×25","Burpee + Jump ×10","High Knees ×30"]
     };
+
     Map<String, String> descriptions = {
-      "Push-ups ×15": "Hands shoulder-width apart, lower chest to floor, push back up.",
-      "Shoulder Taps ×20": "In plank, tap left shoulder with right hand, alternate.",
-      "Arm Circles ×20": "Extend arms sideways, make small circles forward and backward.",
-      "Wall Push-ups ×15": "Stand facing wall, hands on wall, bend elbows to bring chest close, push back.",
-      "Squats ×20": "Feet shoulder-width apart, bend knees, push hips back, return.",
-      "Lunges ×15 per leg": "Step forward, bend knees 90°, return.",
-      "High Knees ×25": "Jog in place lifting knees as high as possible.",
-      "Glute Bridges ×15": "Lie on back, knees bent, lift hips toward ceiling, lower.",
-      "Plank 30s": "Hold a push-up position on elbows, keep body straight.",
+      "Push-ups ×15":"Hands shoulder-width apart, lower chest to floor, push back up.",
+      "Shoulder Taps ×20":"In plank, tap left shoulder with right hand, alternate.",
+      "Arm Circles ×20":"Extend arms sideways, make small circles forward and backward.",
+      "Wall Push-ups ×15":"Stand facing wall, hands on wall, bend elbows to bring chest close, push back.",
+      "Squats ×20":"Feet shoulder-width apart, bend knees, push hips back, return.",
+      "Lunges ×15 per leg":"Step forward, bend knees 90°, return.",
+      "High Knees ×25":"Jog in place lifting knees as high as possible.",
+      "Glute Bridges ×15":"Lie on back, knees bent, lift hips toward ceiling, lower.",
+      "Plank 30s":"Hold a push-up position on elbows, keep body straight.",
+      "Sit-ups ×15":"Lie on back, bend knees, lift torso toward knees.",
+      "Mountain Climbers ×20":"Plank position, drive knees alternately toward chest.",
+      "Leg Raises ×15":"Lie on back, lift legs to 90°, lower slowly.",
+      "Burpees ×10":"Stand, squat, kick legs back into plank, return, jump.",
+      "Jumping Jacks ×25":"Jump legs apart, arms overhead, return.",
+      "Burpee + Jump ×10":"Same as burpee but add high jump at end.",
+      "High Knees ×30":"Jog in place lifting knees as high as possible."
+    };
+
+    List<CardData> deckList = [];
+    if (mode == Mode.Burnout) {
+      String chosenSuit = selectedSuit ?? "Hearts";
+      List<String>? exercises = muscleExercises[chosenSuit];
+      for (int i=0;i<13;i++){
+        for (int s=0;s<4;s++){
+          String ex = exercises![s%4];
+          deckList.add(CardData(suit: chosenSuit, exercise: ex, description: descriptions[ex]!, rank: (i%13)+1));
+        }
+      }
+    } else {
+      muscleExercises.forEach((suit, exercises){
+        for (int i=0;i<13;i++){
+          String ex = exercises[i%4];
+          deckList.add(CardData(suit: suit, exercise: ex, description: descriptions[ex]!, rank: (i%13)+1));
+        }
+      });
+    }
+    return deckList;
+  }
+
+  void _initMultiplayer() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if(user==null) return;
+    final docRef = sessionsRef.doc(widget.sessionId);
+    final doc = await docRef.get();
+    if(!doc.exists){
+      await docRef.set({
+        'deck': deck.map((c)=>c.toMap()).toList(),
+        'currentIndex': 0,
+        'cycleNumber': 1,
+        'players': {user.email!:{'points':0,'lastCardIndex':0}}
+      });
+    } else {
+      docRef.update({'players.${user.email}': {'points':0,'lastCardIndex':0}});
+    }
+  }
+
+  void startCard() {
+    if(currentIndex>=deck.length){
+      currentIndex=0;
+      deck.shuffle();
+    }
+    setState((){timeLeft = widget.mode==Mode.Burnout?30:45;});
+    timer?.cancel();
+    timer = Timer.periodic(Duration(seconds: 1),(t){
+      if(!mounted){t.cancel();return;}
+      setState(()=>timeLeft--);
+      if(timeLeft<=0){
+        t.cancel();
+        completeCard();
+      }
+    });
+  }
+
+  void completeCard() async {
+    points+=deck[currentIndex].rank;
+    currentIndex++;
+    if(widget.mode==Mode.Multiplayer){
+      final user = FirebaseAuth.instance.currentUser;
+      if(user!=null){
+        final docRef = sessionsRef.doc(widget.sessionId);
+        docRef.update({'players.${user.email}.points': points,'players.${user.email}.lastCardIndex': currentIndex});
+        await _updateLeaderboard(points);
+      }
+    }
+    startCard();
+  }
+
+  Future<void> _updateLeaderboard(int points) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if(user==null) return;
+    final docRef = FirebaseFirestore.instance.collection('leaderboard').doc(user.email);
+    final doc = await docRef.get();
+    if(doc.exists){
+      final oldPoints = doc['points']??0;
+      docRef.update({'points': points+oldPoints});
+    } else {
+      docRef.set({'username': user.email, 'points': points});
+    }
+  }
+
+  void completeSession() async {
+    if(widget.mode==Mode.Multiplayer){
+      final user = FirebaseAuth.instance.currentUser;
+      if(user!=null){
+        final docRef = sessionsRef.doc(widget.sessionId);
+        docRef.update({'players.${user.email}.lastCardIndex':deck.length});
+      }
+    }
+    Navigator.pop(context);
+  }
+
+  @override
+  void dispose() { timer?.cancel(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) {
+    if(deck.isEmpty) return Container();
+    final card = deck[currentIndex];
+    return Scaffold(
+      appBar: AppBar(title: Text('Points: $points')),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children:[
+            Container(
+              width:300,height:400,
+              decoration: BoxDecoration(color:Colors.white,borderRadius: BorderRadius.circular(16),boxShadow:[BoxShadow(color: Colors.black26,blurRadius: 8)]),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children:[
+                    Text("${suitSymbols[card.suit]} ${rankNames[card.rank-1]}",style: TextStyle(fontSize:28,fontWeight: FontWeight.bold,color:card.suit=="Hearts"||card.suit=="Diamonds"?Colors.red:Colors.black)),
+                    SizedBox(height:16),
+                    Text(card.exercise,style: TextStyle(fontSize:20),textAlign: TextAlign.center),
+                    SizedBox(height:12),
+                    Text(card.description,style: TextStyle(fontSize:16),textAlign: TextAlign.center),
+                    SizedBox(height:24),
+                    Text("Time Left: $timeLeft s",style: TextStyle(fontSize:18,fontWeight: FontWeight.bold)),
+                    SizedBox(height:16),
+                    ElevatedButton(onPressed: completeCard, child: Text('Done Card')),
+                    SizedBox(height:8),
+                    ElevatedButton(onPressed: completeSession, child: Text('Complete Session',style: TextStyle(color:Colors.white))),
+                  ]
+                )
+              )
+            ),
+          ]
+        )
+      ),
+    );
+  }
+}
