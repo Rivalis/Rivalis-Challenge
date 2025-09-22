@@ -1,27 +1,9 @@
 [build]
-  command = """
-    # Clone Flutter
-    git clone https://github.com/flutter/flutter.git -b stable --depth 1
-
-    # Add Flutter and Dart to PATH
-    export PATH=`pwd`/flutter/bin:`pwd`/flutter/bin/cache/dart-sdk/bin:$PATH
-
-    # Enable web support
-    flutter config --enable-web
-
-    # Check Flutter environment
-    flutter doctor
-
-    # Get dependencies
-    flutter pub get
-
-    # Ensure web folder exists
-    flutter create .
-
-    # Build web
-    flutter build web
-  """
+  command = "flutter pub get && flutter build web"
   publish = "build/web"
 
+[context.production.environment]
+  ENABLE_WEB = "true"
+
 [build.environment]
-  NETLIFY_USE_YARN = "true"
+  FLUTTER_VERSION = "3.35.4"
