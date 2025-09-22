@@ -1,9 +1,6 @@
 [build]
-  command = "flutter pub get && flutter build web"
   publish = "build/web"
-
-[context.production.environment]
-  ENABLE_WEB = "true"
+  command = "bash netlify-build.sh"
 
 [build.environment]
-  FLUTTER_VERSION = "3.35.4"
+  FLUTTER_CHANNEL = "stable"
