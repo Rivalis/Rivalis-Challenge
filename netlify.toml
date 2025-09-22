@@ -1,25 +1,14 @@
-# netlify.toml
-
 [build]
-  # Commands to run before publishing
+  # Preinstall Flutter, then build web
   command = """
-    # Install Flutter
-    git clone https://github.com/flutter/flutter.git --branch stable --depth 1
-    export PATH="$PWD/flutter/bin:$PATH"
-    
-    # Check Flutter setup
-    flutter doctor -v
-    
-    # Get project dependencies
+    git clone https://github.com/flutter/flutter.git -b stable --depth 1
+    export PATH=`pwd`/flutter/bin:`pwd`/flutter/bin/cache/dart-sdk/bin:$PATH
+    flutter doctor
     flutter pub get
-    
-    # Build the web app
     flutter build web
   """
-  
-  # Directory to publish to Netlify
   publish = "build/web"
 
-# Optional environment variables
 [build.environment]
-  NODE_VERSION = "22.19.0"
+  # Optional: Increase build timeout or memory if needed
+  NETLIFY_USE_YARN = "true"
