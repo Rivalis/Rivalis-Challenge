@@ -9,12 +9,13 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: FirebaseOptions(
-      apiKey: "YOUR_API_KEY",
-      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-      projectId: "YOUR_PROJECT_ID",
-      storageBucket: "YOUR_PROJECT_ID.appspot.com",
-      messagingSenderId: "YOUR_SENDER_ID",
-      appId: "YOUR_APP_ID",
+      apiKey: "AIzaSyB5HnrM6izJeJ3ZQ3pk6SH5Z-TDDHzt5JA",
+      authDomain: "rivalis-73117.firebaseapp.com",
+      projectId: "rivalis-73117",
+      storageBucket: "rivalis-73117.firebasestorage.app",
+      messagingSenderId: "818308848308",
+      appId: "1:818308848308:web:4b5771dea721b434f795e1",
+      measurementId: "G-1B8PEJ9BZF",
     ),
   );
   runApp(RivalisApp());
@@ -32,7 +33,7 @@ class RivalisApp extends StatelessWidget {
   }
 }
 
-// --- Auth Screen ---
+// --- Authentication ---
 class AuthScreen extends StatefulWidget {
   @override
   _AuthScreenState createState() => _AuthScreenState();
@@ -48,17 +49,14 @@ class _AuthScreenState extends State<AuthScreen> {
     final password = _passwordController.text.trim();
     try {
       if (isLogin) {
-        await FirebaseAuth.instance.signInWithEmailAndPassword(
-            email: email, password: password);
+        await FirebaseAuth.instance.signInWithEmailAndPassword(email: email, password: password);
       } else {
-        await FirebaseAuth.instance.createUserWithEmailAndPassword(
-            email: email, password: password);
+        await FirebaseAuth.instance.createUserWithEmailAndPassword(email: email, password: password);
+        await FirebaseFirestore.instance.collection('leaderboard').doc(email).set({'username': email, 'points': 0});
       }
-      Navigator.pushReplacement(
-          context, MaterialPageRoute(builder: (_) => HomeScreen()));
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => HomeScreen()));
     } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Error: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 
@@ -70,22 +68,14 @@ class _AuthScreenState extends State<AuthScreen> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            TextField(
-                controller: _emailController,
-                decoration: InputDecoration(labelText: 'Email')),
-            TextField(
-                controller: _passwordController,
-                decoration: InputDecoration(labelText: 'Password'),
-                obscureText: true),
+            TextField(controller: _emailController, decoration: InputDecoration(labelText: 'Email')),
+            TextField(controller: _passwordController, decoration: InputDecoration(labelText: 'Password'), obscureText: true),
             SizedBox(height: 20),
             ElevatedButton(onPressed: submit, child: Text(isLogin ? 'Login' : 'Register')),
             TextButton(
-                onPressed: () {
-                  setState(() {
-                    isLogin = !isLogin;
-                  });
-                },
-                child: Text(isLogin ? 'Create new account' : 'I already have an account')),
+              onPressed: () => setState(() => isLogin = !isLogin),
+              child: Text(isLogin ? 'Create new account' : 'I already have an account'),
+            ),
           ],
         ),
       ),
@@ -98,13 +88,8 @@ class CardData {
   final String suit;
   final String exercise;
   final String description;
-  final int rank;
-  CardData({
-    required this.suit,
-    required this.exercise,
-    required this.description,
-    required this.rank,
-  });
+  final int rank; // 1-13
+  CardData({required this.suit, required this.exercise, required this.description, required this.rank});
 }
 
 enum Mode { Solo, Burnout, Multiplayer }
@@ -121,23 +106,20 @@ class HomeScreen extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             ElevatedButton(
-                onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => GameScreen(mode: Mode.Solo))),
-                child: Text('Solo Mode')),
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => GameScreen(mode: Mode.Solo))),
+              child: Text('Solo Mode'),
+            ),
             ElevatedButton(
-                onPressed: () => _showBurnoutSuitSelection(context),
-                child: Text('Burnout Mode')),
+              onPressed: () => _showBurnoutSuitSelection(context),
+              child: Text('Burnout Mode'),
+            ),
             ElevatedButton(
-                onPressed: () => _startMultiplayer(context),
-                child: Text('Multiplayer Mode')),
+              onPressed: () => _startMultiplayer(context),
+              child: Text('Multiplayer Mode'),
+            ),
             SizedBox(height: 24),
             ElevatedButton(
-              onPressed: () {
-                Navigator.push(context,
-                    MaterialPageRoute(builder: (_) => LeaderboardScreen()));
-              },
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => LeaderboardScreen())),
               child: Text('View Leaderboard'),
             ),
           ],
@@ -152,51 +134,22 @@ class HomeScreen extends StatelessWidget {
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text('Choose Muscle Group'),
-          content:
-              Text('Select which muscle group to focus on for Burnout mode:'),
+          content: Text('Select which muscle group to focus on for Burnout mode:'),
           actions: [
             TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) =>
-                            GameScreen(mode: Mode.Burnout, selectedSuit: "Hearts")));
-              },
+              onPressed: () { Navigator.of(context).pop(); Navigator.push(context, MaterialPageRoute(builder: (_) => GameScreen(mode: Mode.Burnout, selectedSuit: "Hearts"))); },
               child: Text('💪 Arms (Hearts)'),
             ),
             TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) =>
-                            GameScreen(mode: Mode.Burnout, selectedSuit: "Diamonds")));
-              },
+              onPressed: () { Navigator.of(context).pop(); Navigator.push(context, MaterialPageRoute(builder: (_) => GameScreen(mode: Mode.Burnout, selectedSuit: "Diamonds"))); },
               child: Text('🦵 Legs (Diamonds)'),
             ),
             TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) =>
-                            GameScreen(mode: Mode.Burnout, selectedSuit: "Clubs")));
-              },
+              onPressed: () { Navigator.of(context).pop(); Navigator.push(context, MaterialPageRoute(builder: (_) => GameScreen(mode: Mode.Burnout, selectedSuit: "Clubs"))); },
               child: Text('🏋️ Core (Clubs)'),
             ),
             TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) =>
-                            GameScreen(mode: Mode.Burnout, selectedSuit: "Spades")));
-              },
+              onPressed: () { Navigator.of(context).pop(); Navigator.push(context, MaterialPageRoute(builder: (_) => GameScreen(mode: Mode.Burnout, selectedSuit: "Spades"))); },
               child: Text('🔥 Cardio (Spades)'),
             ),
           ],
@@ -207,18 +160,44 @@ class HomeScreen extends StatelessWidget {
 
   void _startMultiplayer(BuildContext context) {
     final sessionId = Random().nextInt(100000).toString();
-    Navigator.push(
-        context,
-        MaterialPageRoute(
-            builder: (_) => GameScreen(mode: Mode.Multiplayer, sessionId: sessionId)));
+    Navigator.push(context, MaterialPageRoute(builder: (_) => GameScreen(mode: Mode.Multiplayer, sessionId: sessionId)));
   }
 }
 
-// --- Game Screen (Solo / Burnout / Multiplayer) ---
+// --- Leaderboard ---
+class LeaderboardScreen extends StatelessWidget {
+  final CollectionReference leaderboardRef = FirebaseFirestore.instance.collection('leaderboard');
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Leaderboard')),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: leaderboardRef.orderBy('points', descending: true).snapshots(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) return Center(child: CircularProgressIndicator());
+          final docs = snapshot.data!.docs;
+          return ListView.builder(
+            itemCount: docs.length,
+            itemBuilder: (context, index) {
+              final data = docs[index];
+              return ListTile(
+                title: Text(data['username'] ?? 'Unknown'),
+                trailing: Text('${data['points'] ?? 0} pts'),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+}
+
+// --- GameScreen ---
 class GameScreen extends StatefulWidget {
   final Mode mode;
   final String? selectedSuit;
-  final String? sessionId; // For multiplayer
+  final String? sessionId; // Multiplayer
   GameScreen({required this.mode, this.selectedSuit, this.sessionId});
   @override
   _GameScreenState createState() => _GameScreenState();
@@ -227,12 +206,15 @@ class GameScreen extends StatefulWidget {
 class _GameScreenState extends State<GameScreen> {
   late List<CardData> deck;
   int currentIndex = 0;
+  int cycleNumber = 1;
   int points = 0;
   Timer? timer;
   int timeLeft = 0;
+  bool showCompleteButton = true;
   String? selectedSuit;
-  String? playerId;
-  late CollectionReference multiplayerRef;
+
+  final List<String> rankNames = ["Ace","2","3","4","5","6","7","8","9","10","Jack","Queen","King"];
+  final Map<String, String> suitSymbols = {"Hearts":"♥","Diamonds":"♦","Clubs":"♣","Spades":"♠"};
 
   @override
   void initState() {
@@ -240,18 +222,6 @@ class _GameScreenState extends State<GameScreen> {
     selectedSuit = widget.selectedSuit;
     deck = generateDeck(widget.mode);
     deck.shuffle();
-    if (widget.mode == Mode.Multiplayer && widget.sessionId != null) {
-      playerId = FirebaseAuth.instance.currentUser!.uid;
-      multiplayerRef = FirebaseFirestore.instance
-          .collection('sessions')
-          .doc(widget.sessionId)
-          .collection('players');
-      multiplayerRef.doc(playerId).set({
-        'username': FirebaseAuth.instance.currentUser!.email,
-        'points': 0,
-        'currentCard': 0
-      });
-    }
     startCard();
   }
 
@@ -262,7 +232,6 @@ class _GameScreenState extends State<GameScreen> {
       "Clubs": ["Plank 30s", "Sit-ups ×15", "Mountain Climbers ×20", "Leg Raises ×15"],
       "Spades": ["Burpees ×10", "Jumping Jacks ×25", "Burpee + Jump ×10", "High Knees ×30"],
     };
-
     Map<String, String> descriptions = {
       "Push-ups ×15": "Hands shoulder-width apart, lower chest to floor, push back up.",
       "Shoulder Taps ×20": "In plank, tap left shoulder with right hand, alternate.",
@@ -273,5 +242,3 @@ class _GameScreenState extends State<GameScreen> {
       "High Knees ×25": "Jog in place lifting knees as high as possible.",
       "Glute Bridges ×15": "Lie on back, knees bent, lift hips toward ceiling, lower.",
       "Plank 30s": "Hold a push-up position on elbows, keep body straight.",
-      "Sit-ups ×15": "Lie on back, bend knees, lift torso toward knees.",
-      "Mountain Climbers ×20": "Plank position, drive knees alternately toward chest.",
