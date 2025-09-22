@@ -1,19 +1,32 @@
 #!/bin/bash
-set -e
+set -e  # Exit immediately if a command fails
 
-# Clone Flutter if it doesn't exist
-if [ ! -d "flutter" ]; then
-  git clone https://github.com/flutter/flutter.git -b stable --depth 1
+# Log start
+echo "=== Netlify Flutter Web Build Starting ==="
+
+# Ensure Flutter is available
+if ! command -v flutter &> /dev/null; then
+    echo "Flutter not found. Installing Flutter..."
+    git clone https://github.com/flutter/flutter.git -b stable /opt/flutter
+    export PATH="$PATH:/opt/flutter/bin"
 fi
 
-# Add Flutter to PATH
-export PATH="$PWD/flutter/bin:$PATH"
+# Confirm Flutter version
+flutter --version
 
-# Enable web support
-flutter config --enable-web
+# Navigate to project root (adjust if your Flutter project is in a subfolder)
+PROJECT_ROOT=$(pwd)
+echo "Project root: $PROJECT_ROOT"
 
-# Get dependencies
+# Get Flutter dependencies
+echo "Running flutter pub get..."
 flutter pub get
 
-# Build the web project
+# Build Flutter web
+echo "Building Flutter web..."
 flutter build web --release
+
+# Optional: specify output folder for Netlify
+echo "Build completed. Output folder: build/web"
+
+echo "=== Netlify Flutter Web Build Finished ==="
