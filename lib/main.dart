@@ -76,7 +76,8 @@ class HomeScreen extends StatelessWidget {
                 Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (_) => GameScreen(mode: Mode.Burnout, selectedSuit: "Hearts")));
+                        builder: (_) =>
+                            GameScreen(mode: Mode.Burnout, selectedSuit: "Hearts")));
               },
               child: Text('💪 Arms (Hearts)'),
             ),
@@ -86,7 +87,8 @@ class HomeScreen extends StatelessWidget {
                 Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (_) => GameScreen(mode: Mode.Burnout, selectedSuit: "Diamonds")));
+                        builder: (_) =>
+                            GameScreen(mode: Mode.Burnout, selectedSuit: "Diamonds")));
               },
               child: Text('🦵 Legs (Diamonds)'),
             ),
@@ -96,7 +98,8 @@ class HomeScreen extends StatelessWidget {
                 Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (_) => GameScreen(mode: Mode.Burnout, selectedSuit: "Clubs")));
+                        builder: (_) =>
+                            GameScreen(mode: Mode.Burnout, selectedSuit: "Clubs")));
               },
               child: Text('🏋️ Core (Clubs)'),
             ),
@@ -106,7 +109,8 @@ class HomeScreen extends StatelessWidget {
                 Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (_) => GameScreen(mode: Mode.Burnout, selectedSuit: "Spades")));
+                        builder: (_) =>
+                            GameScreen(mode: Mode.Burnout, selectedSuit: "Spades")));
               },
               child: Text('🔥 Cardio (Spades)'),
             ),
@@ -152,7 +156,6 @@ class RivalisCard extends StatelessWidget {
           ),
           child: Stack(
             children: [
-              // Watermark Text
               Center(
                 child: Text(
                   'Rivalis',
@@ -163,7 +166,6 @@ class RivalisCard extends StatelessWidget {
                   ),
                 ),
               ),
-              // Card Content
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
@@ -227,8 +229,7 @@ class _GameScreenState extends State<GameScreen> {
   Timer? timer;
   int timeLeft = 0;
   bool showDoneButton = false;
-  String? selectedSuit; // For Burnout mode suit selection
-  String motivational = "You can do it!";
+  String? selectedSuit;
 
   @override
   void initState() {
@@ -278,10 +279,7 @@ class _GameScreenState extends State<GameScreen> {
         for (int s = 0; s < 4; s++) {
           String ex = exercises[s % 4];
           deckList.add(CardData(
-              suit: chosenSuit,
-              exercise: ex,
-              description: descriptions[ex]!,
-              rank: (i % 13) + 1));
+              suit: chosenSuit, exercise: ex, description: descriptions[ex]!, rank: (i % 13) + 1));
         }
       }
     } else {
@@ -289,10 +287,7 @@ class _GameScreenState extends State<GameScreen> {
         for (int i = 0; i < 13; i++) {
           String ex = exercises[i % 4];
           deckList.add(CardData(
-              suit: suit,
-              exercise: ex,
-              description: descriptions[ex]!,
-              rank: (i % 13) + 1));
+              suit: suit, exercise: ex, description: descriptions[ex]!, rank: (i % 13) + 1));
         }
       });
     }
@@ -300,4 +295,79 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void startCard() {
-    if (currentIndex
+    if (currentIndex >= deck.length) {
+      if (widget.mode == Mode.Burnout) cycleNumber++;
+      currentIndex = 0;
+      deck.shuffle();
+    }
+
+    if (!mounted) return;
+
+    setState(() {
+      timeLeft = widget.mode == Mode.Burnout ? 30 : 45;
+      showDoneButton = false;
+    });
+
+    timer?.cancel();
+    timer = Timer.periodic(Duration(seconds: 1), (t) {
+      if (!mounted) {
+        t.cancel();
+        return;
+      }
+      setState(() {
+        timeLeft--;
+        if ((widget.mode == Mode.Burnout && timeLeft <= 10) ||
+            (widget.mode != Mode.Burnout && timeLeft <= 15)) {
+          showDoneButton = true;
+        }
+        if (timeLeft <= 0) {
+          t.cancel();
+          completeCard();
+        }
+      });
+    });
+  }
+
+  void completeCard() {
+    if (!mounted) return;
+
+    int cardPoints = deck[currentIndex].rank;
+    if (widget.mode == Mode.Burnout && cycleNumber >= 2) cardPoints *= 2;
+    points += cardPoints;
+    currentIndex++;
+    startCard();
+  }
+
+  @override
+  void dispose() {
+    timer?.cancel();
+    timer = null;
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (deck.isEmpty) return Container();
+    CardData card = deck[currentIndex];
+
+    return Scaffold(
+      appBar: AppBar(title: Text('Rivalis - Points: $points')),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            RivalisCard(
+              suit: card.suit,
+              rank: card.rank,
+              exercise: card.exercise,
+              description: card.description,
+              timeLeft: timeLeft,
+              showDoneButton: showDoneButton,
+              onDone: completeCard,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
