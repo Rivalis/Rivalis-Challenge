@@ -1,35 +1,28 @@
 name: rivalis
-description: A Flutter web app with Firebase integration
-publish_to: "none"
+description: A fitness card game with multiplayer and solo modes.
+
+version: 1.0.0+1
 
 environment:
   sdk: ">=3.3.0 <4.0.0"
+  flutter: ">=3.13.0"
 
 dependencies:
   flutter:
     sdk: flutter
-  firebase_core: ^2.16.0
-  firebase_auth: ^4.6.0
-  cloud_firestore: ^4.8.0
-  google_sign_in: ^6.1.0
-
-  # Firebase packages
-  firebase_core: ^3.5.0
-  firebase_auth: ^4.6.0
+  firebase_core: ^3.12.0
+  firebase_auth: ^5.14.0
   cloud_firestore: ^5.3.0
-
-  # Other common Flutter packages
-  provider: ^6.0.7
-  http: ^1.2.1
+  google_sign_in: ^6.2.6
+  cupertino_icons: ^1.0.5
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^2.0.1
+  flutter_lints: ^2.0.0
 
 flutter:
   uses-material-design: true
 
-  flutter:
   assets:
     - assets/images/background.png
