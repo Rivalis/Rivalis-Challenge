@@ -9,26 +9,26 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # 1️⃣ Checkout repo
-    - uses: actions/checkout@v3
+      # 1️⃣ Checkout repo
+      - uses: actions/checkout@v3
 
-    # 2️⃣ Install Flutter
-    - name: Install Flutter
-      uses: subosito/flutter-action@v2
-      with:
-        flutter-version: '3.13.0'
+      # 2️⃣ Install Flutter
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.13.0'
 
-    # 3️⃣ Get Flutter dependencies
-    - name: Get Dependencies
-      run: flutter pub get
+      # 3️⃣ Get Flutter dependencies
+      - name: Get Dependencies
+        run: flutter pub get
 
-    # 4️⃣ Build Flutter Web
-    - name: Build Web
-      run: flutter build web --release
+      # 4️⃣ Build Flutter Web
+      - name: Build Web
+        run: flutter build web --release
 
-    # 5️⃣ Upload build artifacts (v4)
-    - name: Upload Web Build
-      uses: actions/upload-artifact@v4
-      with:
-        name: web-build
-        path: build/web
+      # 5️⃣ Upload build artifacts
+      - name: Upload Web Build
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-build
+          path: build/web
