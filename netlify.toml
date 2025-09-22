@@ -1,27 +1,8 @@
-# netlify.toml - Flutter web deploy with Firebase API keys
-
 [build]
-  command = "bash netlify-build.sh"
+  command = "flutter pub get && flutter build web --release"
   publish = "build/web"
 
-[context.deploy-preview]
-  command = "bash netlify-build.sh --preview"
-  publish = "build/web"
-
-[context.production.environment]
-  # Firebase API keys
-  FIREBASE_API_KEY = "AIzaSyB5HnrM6izJeJ3ZQ3pk6SH5Z-TDDHzt5JA"
-  FIREBASE_AUTH_DOMAIN = "rivalis-73117.firebaseapp.com"
-  FIREBASE_PROJECT_ID = "rivalis-73117"
-  FIREBASE_STORAGE_BUCKET = "rivalis-73117.firebasestorage.app"
-  FIREBASE_MESSAGING_SENDER_ID = "818308848308"
-  FIREBASE_APP_ID = "1:818308848308:web:4b5771dea721b434f795e1"
-  FIREBASE_MEASUREMENT_ID = "G-1B8PEJ9BZF"
-
-  # Optional Flutter web optimization
-  FLUTTER_WEB_USE_SKIA = "true"
-
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cache-Control = "no-cache"
