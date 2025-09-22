@@ -1,7 +1,6 @@
 name: rivalis
-description: Rivalis app with Firebase, live multiplayer, leaderboard, and playing cards
-publish_to: 'none'
-version: 1.0.0+1
+description: A Flutter web app with Firebase integration
+publish_to: "none"
 
 environment:
   sdk: ">=3.3.0 <4.0.0"
@@ -10,10 +9,14 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # Firebase
-  firebase_core: ^2.25.0
-  firebase_auth: ^5.25.0
+  # Firebase packages
+  firebase_core: ^3.5.0
+  firebase_auth: ^4.6.0
   cloud_firestore: ^5.3.0
+
+  # Other common Flutter packages
+  provider: ^6.0.7
+  http: ^1.2.1
 
 dev_dependencies:
   flutter_test:
@@ -22,3 +25,6 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  assets:
+    - assets/images/
