@@ -1,14 +1,27 @@
 [build]
-  # Preinstall Flutter, then build web
   command = """
+    # Clone Flutter
     git clone https://github.com/flutter/flutter.git -b stable --depth 1
+
+    # Add Flutter and Dart to PATH
     export PATH=`pwd`/flutter/bin:`pwd`/flutter/bin/cache/dart-sdk/bin:$PATH
+
+    # Enable web support
+    flutter config --enable-web
+
+    # Check Flutter environment
     flutter doctor
+
+    # Get dependencies
     flutter pub get
+
+    # Ensure web folder exists
+    flutter create .
+
+    # Build web
     flutter build web
   """
   publish = "build/web"
 
 [build.environment]
-  # Optional: Increase build timeout or memory if needed
   NETLIFY_USE_YARN = "true"
