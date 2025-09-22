@@ -1,14 +1,14 @@
-import 'dart:async';
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:math';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
   await Firebase.initializeApp(
-    options: FirebaseOptions(
+    options: const FirebaseOptions(
       apiKey: "AIzaSyB5HnrM6izJeJ3ZQ3pk6SH5Z-TDDHzt5JA",
       authDomain: "rivalis-73117.firebaseapp.com",
       projectId: "rivalis-73117",
@@ -18,389 +18,277 @@ void main() async {
       measurementId: "G-1B8PEJ9BZF",
     ),
   );
-  runApp(RivalisApp());
+
+  runApp(const MyApp());
 }
 
-// --- App ---
-class RivalisApp extends StatelessWidget {
+// ---------------- Card Model ----------------
+
+class PlayingCard {
+  final String suit;
+  final String rank;
+  PlayingCard({required this.suit, required this.rank});
+
+  Map<String, dynamic> toMap() => {'suit': suit, 'rank': rank};
+  factory PlayingCard.fromMap(Map<String, dynamic> map) =>
+      PlayingCard(suit: map['suit'], rank: map['rank']);
+}
+
+// ---------------- Main App ----------------
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Rivalis',
-      theme: ThemeData(primarySwatch: Colors.red),
-      home: AuthScreen(),
+      home: LoginScreen(),
     );
   }
 }
 
-// --- Authentication ---
-class AuthScreen extends StatefulWidget {
+// ---------------- Login Screen ----------------
+
+class LoginScreen extends StatefulWidget {
   @override
-  _AuthScreenState createState() => _AuthScreenState();
+  _LoginScreenState createState() => _LoginScreenState();
 }
 
-class _AuthScreenState extends State<AuthScreen> {
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  bool isLogin = true;
+class _LoginScreenState extends State<LoginScreen> {
+  final emailController = TextEditingController();
+  final passwordController = TextEditingController();
+  String message = '';
 
-  Future<void> submit() async {
-    final email = _emailController.text.trim();
-    final password = _passwordController.text.trim();
+  Future<void> signUp() async {
     try {
-      if (isLogin) {
-        await FirebaseAuth.instance.signInWithEmailAndPassword(email: email, password: password);
-      } else {
-        await FirebaseAuth.instance.createUserWithEmailAndPassword(email: email, password: password);
-        await FirebaseFirestore.instance.collection('leaderboard').doc(email).set({'username': email, 'points': 0});
-      }
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => HomeScreen()));
+      UserCredential user = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+          email: emailController.text.trim(),
+          password: passwordController.text.trim());
+
+      await FirebaseFirestore.instance.collection('users').doc(user.user!.uid).set({
+        'email': user.user!.email,
+        'score': 0,
+      });
+
+      setState(() {
+        message = 'Registered: ${user.user!.email}';
+      });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      setState(() => message = 'Error: $e');
+    }
+  }
+
+  Future<void> signIn() async {
+    try {
+      UserCredential user = await FirebaseAuth.instance.signInWithEmailAndPassword(
+          email: emailController.text.trim(),
+          password: passwordController.text.trim());
+
+      Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => GameScreen())
+      );
+    } catch (e) {
+      setState(() => message = 'Error: $e');
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(isLogin ? 'Login' : 'Register')),
+      appBar: AppBar(title: const Text('Rivalis Login')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            TextField(controller: _emailController, decoration: InputDecoration(labelText: 'Email')),
-            TextField(controller: _passwordController, decoration: InputDecoration(labelText: 'Password'), obscureText: true),
-            SizedBox(height: 20),
-            ElevatedButton(onPressed: submit, child: Text(isLogin ? 'Login' : 'Register')),
-            TextButton(
-              onPressed: () => setState(() => isLogin = !isLogin),
-              child: Text(isLogin ? 'Create new account' : 'I already have an account'),
-            ),
-          ],
-        ),
+        child: Column(children: [
+          TextField(controller: emailController, decoration: const InputDecoration(labelText: 'Email')),
+          TextField(controller: passwordController, decoration: const InputDecoration(labelText: 'Password'), obscureText: true),
+          const SizedBox(height: 20),
+          ElevatedButton(onPressed: signUp, child: const Text('Sign Up')),
+          ElevatedButton(onPressed: signIn, child: const Text('Sign In')),
+          const SizedBox(height: 20),
+          Text(message),
+        ]),
       ),
     );
   }
 }
 
-// --- Models ---
-class CardData {
-  final String suit;
-  final String exercise;
-  final String description;
-  final int rank;
+// ---------------- Game Screen ----------------
 
-  CardData({required this.suit, required this.exercise, required this.description, required this.rank});
-
-  Map<String, dynamic> toMap() => {
-        'suit': suit,
-        'exercise': exercise,
-        'description': description,
-        'rank': rank,
-      };
-
-  factory CardData.fromMap(Map<String, dynamic> map) => CardData(
-        suit: map['suit'],
-        exercise: map['exercise'],
-        description: map['description'],
-        rank: map['rank'],
-      );
-}
-
-enum Mode { Solo, Burnout, Multiplayer }
-
-// --- Home Screen ---
-class HomeScreen extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
-    return Scaffold(
-      appBar: AppBar(title: Text('Rivalis - ${user?.email ?? ''}')),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            ElevatedButton(
-              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => GameScreen(mode: Mode.Solo))),
-              child: Text('Solo Mode'),
-            ),
-            ElevatedButton(
-              onPressed: () => _showBurnoutSuitSelection(context),
-              child: Text('Burnout Mode'),
-            ),
-            ElevatedButton(
-              onPressed: () => _startMultiplayer(context),
-              child: Text('Multiplayer Mode'),
-            ),
-            SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => LeaderboardScreen())),
-              child: Text('View Leaderboard'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showBurnoutSuitSelection(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Choose Muscle Group'),
-          content: Text('Select which muscle group to focus on for Burnout mode:'),
-          actions: [
-            TextButton(
-              onPressed: () { Navigator.of(context).pop(); Navigator.push(context, MaterialPageRoute(builder: (_) => GameScreen(mode: Mode.Burnout, selectedSuit: "Hearts"))); },
-              child: Text('💪 Arms (Hearts)'),
-            ),
-            TextButton(
-              onPressed: () { Navigator.of(context).pop(); Navigator.push(context, MaterialPageRoute(builder: (_) => GameScreen(mode: Mode.Burnout, selectedSuit: "Diamonds"))); },
-              child: Text('🦵 Legs (Diamonds)'),
-            ),
-            TextButton(
-              onPressed: () { Navigator.of(context).pop(); Navigator.push(context, MaterialPageRoute(builder: (_) => GameScreen(mode: Mode.Burnout, selectedSuit: "Clubs"))); },
-              child: Text('🏋️ Core (Clubs)'),
-            ),
-            TextButton(
-              onPressed: () { Navigator.of(context).pop(); Navigator.push(context, MaterialPageRoute(builder: (_) => GameScreen(mode: Mode.Burnout, selectedSuit: "Spades"))); },
-              child: Text('🔥 Cardio (Spades)'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _startMultiplayer(BuildContext context) {
-    final sessionId = Random().nextInt(100000).toString();
-    Navigator.push(context, MaterialPageRoute(builder: (_) => GameScreen(mode: Mode.Multiplayer, sessionId: sessionId)));
-  }
-}
-
-// --- Leaderboard ---
-class LeaderboardScreen extends StatelessWidget {
-  final CollectionReference leaderboardRef = FirebaseFirestore.instance.collection('leaderboard');
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text('Leaderboard')),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: leaderboardRef.orderBy('points', descending: true).snapshots(),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) return Center(child: CircularProgressIndicator());
-          final docs = snapshot.data!.docs;
-          return ListView.builder(
-            itemCount: docs.length,
-            itemBuilder: (context, index) {
-              final data = docs[index];
-              return ListTile(
-                title: Text(data['username'] ?? 'Unknown'),
-                trailing: Text('${data['points'] ?? 0} pts'),
-              );
-            },
-          );
-        },
-      ),
-    );
-  }
-}
-
-// --- GameScreen ---
 class GameScreen extends StatefulWidget {
-  final Mode mode;
-  final String? selectedSuit;
-  final String? sessionId;
-  GameScreen({required this.mode, this.selectedSuit, this.sessionId});
   @override
   _GameScreenState createState() => _GameScreenState();
 }
 
 class _GameScreenState extends State<GameScreen> {
-  late List<CardData> deck;
-  int currentIndex = 0;
-  int cycleNumber = 1;
-  int points = 0;
-  Timer? timer;
-  int timeLeft = 0;
-  bool showCompleteButton = true;
-  String? selectedSuit;
-
-  final CollectionReference sessionsRef = FirebaseFirestore.instance.collection('multiplayer_sessions');
-
-  final List<String> rankNames = ["Ace","2","3","4","5","6","7","8","9","10","Jack","Queen","King"];
-  final Map<String, String> suitSymbols = {"Hearts":"♥","Diamonds":"♦","Clubs":"♣","Spades":"♠"};
+  final String userId = FirebaseAuth.instance.currentUser!.uid;
+  final String gameId = 'game_1234'; // shared game
 
   @override
   void initState() {
     super.initState();
-    selectedSuit = widget.selectedSuit;
-    deck = generateDeck(widget.mode);
-    deck.shuffle();
-    if (widget.mode == Mode.Multiplayer) _initMultiplayer();
-    startCard();
+    _initializeGame();
   }
 
-  List<CardData> generateDeck(Mode mode) {
-    Map<String, List<String>> muscleExercises = {
-      "Hearts":["Push-ups ×15","Shoulder Taps ×20","Arm Circles ×20","Wall Push-ups ×15"],
-      "Diamonds":["Squats ×20","Lunges ×15 per leg","High Knees ×25","Glute Bridges ×15"],
-      "Clubs":["Plank 30s","Sit-ups ×15","Mountain Climbers ×20","Leg Raises ×15"],
-      "Spades":["Burpees ×10","Jumping Jacks ×25","Burpee + Jump ×10","High Knees ×30"]
-    };
+  Future<void> _initializeGame() async {
+    final gameRef = FirebaseFirestore.instance.collection('games').doc(gameId);
+    final doc = await gameRef.get();
 
-    Map<String, String> descriptions = {
-      "Push-ups ×15":"Hands shoulder-width apart, lower chest to floor, push back up.",
-      "Shoulder Taps ×20":"In plank, tap left shoulder with right hand, alternate.",
-      "Arm Circles ×20":"Extend arms sideways, make small circles forward and backward.",
-      "Wall Push-ups ×15":"Stand facing wall, hands on wall, bend elbows to bring chest close, push back.",
-      "Squats ×20":"Feet shoulder-width apart, bend knees, push hips back, return.",
-      "Lunges ×15 per leg":"Step forward, bend knees 90°, return.",
-      "High Knees ×25":"Jog in place lifting knees as high as possible.",
-      "Glute Bridges ×15":"Lie on back, knees bent, lift hips toward ceiling, lower.",
-      "Plank 30s":"Hold a push-up position on elbows, keep body straight.",
-      "Sit-ups ×15":"Lie on back, bend knees, lift torso toward knees.",
-      "Mountain Climbers ×20":"Plank position, drive knees alternately toward chest.",
-      "Leg Raises ×15":"Lie on back, lift legs to 90°, lower slowly.",
-      "Burpees ×10":"Stand, squat, kick legs back into plank, return, jump.",
-      "Jumping Jacks ×25":"Jump legs apart, arms overhead, return.",
-      "Burpee + Jump ×10":"Same as burpee but add high jump at end.",
-      "High Knees ×30":"Jog in place lifting knees as high as possible."
-    };
+    if (!doc.exists) {
+      // Create and shuffle 52-card deck
+      final suits = ['hearts','diamonds','clubs','spades'];
+      final ranks = ['Ace','2','3','4','5','6','7','8','9','10','Jack','Queen','King'];
+      List<Map<String,dynamic>> deck = [];
+      for (var suit in suits) for (var rank in ranks) deck.add({'suit': suit,'rank': rank});
+      deck.shuffle(Random());
 
-    List<CardData> deckList = [];
-    if (mode == Mode.Burnout) {
-      String chosenSuit = selectedSuit ?? "Hearts";
-      List<String>? exercises = muscleExercises[chosenSuit];
-      for (int i=0;i<13;i++){
-        for (int s=0;s<4;s++){
-          String ex = exercises![s%4];
-          deckList.add(CardData(suit: chosenSuit, exercise: ex, description: descriptions[ex]!, rank: (i%13)+1));
-        }
-      }
-    } else {
-      muscleExercises.forEach((suit, exercises){
-        for (int i=0;i<13;i++){
-          String ex = exercises[i%4];
-          deckList.add(CardData(suit: suit, exercise: ex, description: descriptions[ex]!, rank: (i%13)+1));
-        }
-      });
-    }
-    return deckList;
-  }
-
-  void _initMultiplayer() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if(user==null) return;
-    final docRef = sessionsRef.doc(widget.sessionId);
-    final doc = await docRef.get();
-    if(!doc.exists){
-      await docRef.set({
-        'deck': deck.map((c)=>c.toMap()).toList(),
-        'currentIndex': 0,
-        'cycleNumber': 1,
-        'players': {user.email!:{'points':0,'lastCardIndex':0}}
+      await gameRef.set({
+        'deck': deck,
+        'hands': {userId: []},
+        'active': true,
       });
     } else {
-      docRef.update({'players.${user.email}': {'points':0,'lastCardIndex':0}});
-    }
-  }
-
-  void startCard() {
-    if(currentIndex>=deck.length){
-      currentIndex=0;
-      deck.shuffle();
-    }
-    setState((){timeLeft = widget.mode==Mode.Burnout?30:45;});
-    timer?.cancel();
-    timer = Timer.periodic(Duration(seconds: 1),(t){
-      if(!mounted){t.cancel();return;}
-      setState(()=>timeLeft--);
-      if(timeLeft<=0){
-        t.cancel();
-        completeCard();
-      }
-    });
-  }
-
-  void completeCard() async {
-    points+=deck[currentIndex].rank;
-    currentIndex++;
-    if(widget.mode==Mode.Multiplayer){
-      final user = FirebaseAuth.instance.currentUser;
-      if(user!=null){
-        final docRef = sessionsRef.doc(widget.sessionId);
-        docRef.update({'players.${user.email}.points': points,'players.${user.email}.lastCardIndex': currentIndex});
-        await _updateLeaderboard(points);
+      final hands = Map<String,dynamic>.from(doc['hands']);
+      if (!hands.containsKey(userId)) {
+        hands[userId] = [];
+        await gameRef.update({'hands': hands});
       }
     }
-    startCard();
   }
 
-  Future<void> _updateLeaderboard(int points) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if(user==null) return;
-    final docRef = FirebaseFirestore.instance.collection('leaderboard').doc(user.email);
-    final doc = await docRef.get();
-    if(doc.exists){
-      final oldPoints = doc['points']??0;
-      docRef.update({'points': points+oldPoints});
-    } else {
-      docRef.set({'username': user.email, 'points': points});
+  Future<void> _drawCard() async {
+    final gameRef = FirebaseFirestore.instance.collection('games').doc(gameId);
+    final doc = await gameRef.get();
+    final data = doc.data()!;
+    if (!(data['active'] ?? true)) return;
+
+    final deck = List<Map<String,dynamic>>.from(data['deck']);
+    if (deck.isEmpty) return _endGame();
+
+    final card = deck.removeAt(0);
+    final hands = Map<String,dynamic>.from(data['hands']);
+    final hand = List<Map<String,dynamic>>.from(hands[userId] ?? []);
+    hand.add(card);
+    hands[userId] = hand;
+
+    await gameRef.update({'deck': deck, 'hands': hands});
+
+    if (deck.isEmpty) await _endGame();
+  }
+
+  Future<void> _endGame() async {
+    final gameRef = FirebaseFirestore.instance.collection('games').doc(gameId);
+    final data = (await gameRef.get()).data()!;
+    final hands = Map<String,dynamic>.from(data['hands']);
+
+    for (final uid in hands.keys) {
+      final score = hands[uid].length; // 1 point per card
+      await FirebaseFirestore.instance.collection('users').doc(uid).update({'score': score});
     }
+
+    await gameRef.update({'active': false});
+    Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LeaderboardScreen()));
   }
 
-  void completeSession() async {
-    if(widget.mode==Mode.Multiplayer){
-      final user = FirebaseAuth.instance.currentUser;
-      if(user!=null){
-        final docRef = sessionsRef.doc(widget.sessionId);
-        docRef.update({'players.${user.email}.lastCardIndex':deck.length});
-      }
-    }
-    Navigator.pop(context);
-  }
+  Widget _cardWidget(Map<String,dynamic> cardData) {
+    final card = PlayingCard.fromMap(cardData);
+    final suitSymbols = {'hearts':'♥','diamonds':'♦','clubs':'♣','spades':'♠'};
+    final color = (card.suit=='hearts'||card.suit=='diamonds')?Colors.red:Colors.black;
 
-  @override
-  void dispose() { timer?.cancel(); super.dispose(); }
+    return Container(
+      width: 70, height: 100, margin: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.white, borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.black),
+        boxShadow: const [BoxShadow(color: Colors.black26, offset: Offset(2,2), blurRadius: 3)]
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(4.0),
+            child: Text('${card.rank}\n${suitSymbols[card.suit]}', style: TextStyle(color: color, fontWeight: FontWeight.bold)),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(4.0),
+            child: Text(suitSymbols[card.suit]!, style: TextStyle(color: color, fontSize: 24)),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    if(deck.isEmpty) return Container();
-    final card = deck[currentIndex];
+    final gameRef = FirebaseFirestore.instance.collection('games').doc(gameId);
+
     return Scaffold(
-      appBar: AppBar(title: Text('Points: $points')),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children:[
-            Container(
-              width:300,height:400,
-              decoration: BoxDecoration(color:Colors.white,borderRadius: BorderRadius.circular(16),boxShadow:[BoxShadow(color: Colors.black26,blurRadius: 8)]),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children:[
-                    Text("${suitSymbols[card.suit]} ${rankNames[card.rank-1]}",style: TextStyle(fontSize:28,fontWeight: FontWeight.bold,color:card.suit=="Hearts"||card.suit=="Diamonds"?Colors.red:Colors.black)),
-                    SizedBox(height:16),
-                    Text(card.exercise,style: TextStyle(fontSize:20),textAlign: TextAlign.center),
-                    SizedBox(height:12),
-                    Text(card.description,style: TextStyle(fontSize:16),textAlign: TextAlign.center),
-                    SizedBox(height:24),
-                    Text("Time Left: $timeLeft s",style: TextStyle(fontSize:18,fontWeight: FontWeight.bold)),
-                    SizedBox(height:16),
-                    ElevatedButton(onPressed: completeCard, child: Text('Done Card')),
-                    SizedBox(height:8),
-                    ElevatedButton(onPressed: completeSession, child: Text('Complete Session',style: TextStyle(color:Colors.white))),
-                  ]
-                )
-              )
-            ),
-          ]
-        )
+      appBar: AppBar(title: const Text('Rivalis Game')),
+      body: StreamBuilder<DocumentSnapshot>(
+        stream: gameRef.snapshots(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+
+          final data = snapshot.data!.data() as Map<String,dynamic>;
+          final handData = List<Map<String,dynamic>>.from(data['hands'][userId] ?? []);
+          final active = data['active'] ?? true;
+
+          return Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(children: handData.map(_cardWidget).toList()),
+                ),
+              ),
+              const SizedBox(height: 10),
+              if (active)
+                ElevatedButton(onPressed: _drawCard, child: const Text('Draw Card')),
+              const SizedBox(height: 10),
+            ],
+          );
+        },
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _endGame,
+        tooltip: 'End Session',
+        child: const Icon(Icons.stop_circle),
+      ),
+    );
+  }
+}
+
+// ---------------- Leaderboard ----------------
+
+class LeaderboardScreen extends StatelessWidget {
+  const LeaderboardScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Rivalis Leaderboard')),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance.collection('users').orderBy('score', descending: true).snapshots(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+
+          final users = snapshot.data!.docs;
+          if (users.isEmpty) return const Center(child: Text('No users yet.'));
+
+          return ListView.builder(
+            itemCount: users.length,
+            itemBuilder: (context, index) {
+              final user = users[index];
+              final email = user['email'] ?? 'Unknown';
+              final score = user['score'] ?? 0;
+              return ListTile(
+                leading: CircleAvatar(child: Text('${index + 1}')),
+                title: Text(email),
+                trailing: Text(score.toString()),
+              );
+            },
+          );
+        },
       ),
     );
   }
