@@ -1,19 +1,27 @@
-# netlify.toml
+#!/bin/bash
+set -e
 
-[build]
-  command = "bash netlify-build.sh"
-  publish = "build/web"
-  # The base directory is optional if your script is in the repo root
-  # base = "."
+echo "=== Netlify Flutter Web Build Starting ==="
 
-[build.environment]
-  # Use Netlify's pre-installed Flutter
-  FLUTTER_ROOT = "/opt/buildhome/flutter"
-  # Optional: force Flutter to use stable channel
-  FLUTTER_CHANNEL = "stable"
+# Install Flutter if not already installed
+if [ ! -d "$HOME/flutter" ]; then
+  echo "Installing Flutter..."
+  git clone https://github.com/flutter/flutter.git -b stable $HOME/flutter
+fi
 
-# Optional: redirect all URLs to index.html for Flutter web routing
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+# Add Flutter to PATH
+export PATH="$HOME/flutter/bin:$PATH"
+
+# Enable Flutter web
+flutter config --enable-web
+
+# Verify Flutter installation
+flutter --version
+
+# Get Flutter dependencies
+flutter pub get
+
+# Build the Flutter web app
+flutter build web --release
+
+echo "=== Flutter Web Build Completed ==="
