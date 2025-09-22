@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:flutter_tts/flutter_tts.dart';
 
 void main() => runApp(RivalisApp());
 
@@ -118,7 +117,7 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-// --- Rivalis Card Widget with Watermark ---
+// --- Rivalis Card Widget ---
 class RivalisCard extends StatelessWidget {
   final String suit;
   final int rank;
@@ -172,8 +171,7 @@ class RivalisCard extends StatelessWidget {
                   children: [
                     Text(
                       "$suit - Rank $rank",
-                      style:
-                          TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                     ),
                     SizedBox(height: 16),
                     Text(
@@ -190,8 +188,7 @@ class RivalisCard extends StatelessWidget {
                     SizedBox(height: 24),
                     Text(
                       "Time Left: $timeLeft s",
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                     SizedBox(height: 16),
                     if (showDoneButton)
@@ -230,9 +227,8 @@ class _GameScreenState extends State<GameScreen> {
   Timer? timer;
   int timeLeft = 0;
   bool showDoneButton = false;
-  FlutterTts flutterTts = FlutterTts();
-  String motivational = "You can do it!";
   String? selectedSuit; // For Burnout mode suit selection
+  String motivational = "You can do it!";
 
   @override
   void initState() {
@@ -245,39 +241,17 @@ class _GameScreenState extends State<GameScreen> {
 
   List<CardData> generateDeck(Mode mode) {
     Map<String, List<String>> muscleExercises = {
-      "Hearts": [
-        "Push-ups ×15",
-        "Shoulder Taps ×20",
-        "Arm Circles ×20",
-        "Wall Push-ups ×15"
-      ],
-      "Diamonds": [
-        "Squats ×20",
-        "Lunges ×15 per leg",
-        "High Knees ×25",
-        "Glute Bridges ×15"
-      ],
-      "Clubs": [
-        "Plank 30s",
-        "Sit-ups ×15",
-        "Mountain Climbers ×20",
-        "Leg Raises ×15"
-      ],
-      "Spades": [
-        "Burpees ×10",
-        "Jumping Jacks ×25",
-        "Burpee + Jump ×10",
-        "High Knees ×30"
-      ],
+      "Hearts": ["Push-ups ×15", "Shoulder Taps ×20", "Arm Circles ×20", "Wall Push-ups ×15"],
+      "Diamonds": ["Squats ×20", "Lunges ×15 per leg", "High Knees ×25", "Glute Bridges ×15"],
+      "Clubs": ["Plank 30s", "Sit-ups ×15", "Mountain Climbers ×20", "Leg Raises ×15"],
+      "Spades": ["Burpees ×10", "Jumping Jacks ×25", "Burpee + Jump ×10", "High Knees ×30"],
     };
 
     Map<String, String> descriptions = {
-      "Push-ups ×15":
-          "Hands shoulder-width apart, lower chest to floor, push back up.",
+      "Push-ups ×15": "Hands shoulder-width apart, lower chest to floor, push back up.",
       "Shoulder Taps ×20": "In plank, tap left shoulder with right hand, alternate.",
       "Arm Circles ×20": "Extend arms sideways, make small circles forward and backward.",
-      "Wall Push-ups ×15":
-          "Stand facing wall, hands on wall, bend elbows to bring chest close, push back.",
+      "Wall Push-ups ×15": "Stand facing wall, hands on wall, bend elbows to bring chest close, push back.",
       "Squats ×20": "Feet shoulder-width apart, bend knees, push hips back, return.",
       "Lunges ×15 per leg": "Step forward, bend knees 90°, return.",
       "High Knees ×25": "Jog in place lifting knees as high as possible.",
@@ -294,11 +268,9 @@ class _GameScreenState extends State<GameScreen> {
 
     List<CardData> deckList = [];
     if (mode == Mode.Burnout) {
-      // Use the selectedSuit for Burnout mode, default to Hearts if not set
       String chosenSuit = selectedSuit ?? "Hearts";
       List<String>? exercises = muscleExercises[chosenSuit];
       if (exercises == null) {
-        // Fallback to Hearts if invalid suit provided
         chosenSuit = "Hearts";
         exercises = muscleExercises[chosenSuit]!;
       }
@@ -313,7 +285,6 @@ class _GameScreenState extends State<GameScreen> {
         }
       }
     } else {
-      // Solo and Multiplayer: each suit = different muscle group
       muscleExercises.forEach((suit, exercises) {
         for (int i = 0; i < 13; i++) {
           String ex = exercises[i % 4];
@@ -329,99 +300,4 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void startCard() {
-    if (currentIndex >= deck.length) {
-      if (widget.mode == Mode.Burnout) cycleNumber++;
-      currentIndex = 0;
-      deck.shuffle();
-    }
-
-    if (!mounted) return;
-
-    setState(() {
-      timeLeft = widget.mode == Mode.Burnout ? 30 : 45;
-      showDoneButton = false;
-    });
-
-    _speakWithErrorHandling(
-        "${deck[currentIndex].exercise}. ${deck[currentIndex].description}. $motivational");
-
-    timer?.cancel();
-    timer = Timer.periodic(Duration(seconds: 1), (t) {
-      if (!mounted) {
-        t.cancel();
-        return;
-      }
-      setState(() {
-        timeLeft--;
-        if ((widget.mode == Mode.Burnout && timeLeft <= 10) ||
-            (widget.mode != Mode.Burnout && timeLeft <= 15)) {
-          showDoneButton = true;
-        }
-        if (timeLeft <= 0) {
-          t.cancel();
-          completeCard();
-        }
-      });
-    });
-  }
-
-  void completeCard() {
-    if (!mounted) return;
-    
-    int cardPoints = deck[currentIndex].rank;
-    if (widget.mode == Mode.Burnout && cycleNumber >= 2) cardPoints *= 2;
-    points += cardPoints;
-    currentIndex++;
-    startCard();
-  }
-
-  @override
-  void dispose() {
-    timer?.cancel();
-    timer = null;
-    flutterTts.stop();
-    super.dispose();
-  }
-
-  Future<void> _speakWithErrorHandling(String text) async {
-    try {
-      await flutterTts.stop(); // Stop any previous speech
-      await flutterTts.speak(text);
-    } catch (e) {
-      // Graceful fallback for TTS errors (especially on web)
-      print('TTS error: $e');
-      // Could show a snackbar or other UI feedback here
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Text-to-Speech not available')),
-        );
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (deck.isEmpty) return Container();
-    CardData card = deck[currentIndex];
-
-    return Scaffold(
-      appBar: AppBar(title: Text('Rivalis - Points: $points')),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            RivalisCard(
-              suit: card.suit,
-              rank: card.rank,
-              exercise: card.exercise,
-              description: card.description,
-              timeLeft: timeLeft,
-              showDoneButton: showDoneButton,
-              onDone: completeCard,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+    if (currentIndex
